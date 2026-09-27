@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Şəhər Hava Məlumatı</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 15px;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #b9e3f5 0%, #e8f6e4 50%, #c8f0c2 100%);
+            color: #183b56;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            top: -120px;
+            right: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -120px;
+            left: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .cloud {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 100px;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(1px);
+            box-shadow: 0 10px 30px rgba(80, 130, 160, 0.08);
+        }
+
+        .cloud::before,
+        .cloud::after {
+            content: "";
+            position: absolute;
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 50%;
+        }
+
+        .cloud::before {
+            width: 70px;
+            height: 70px;
+            top: -35px;
+            left: 35px;
+        }
+
+        .cloud::after {
+            width: 90px;
+            height: 90px;
+            top: -50px;
+            right: 35px;
+        }
+
+        .cloud-1 {
+            width: 180px;
+            height: 55px;
+            top: 100px;
+            left: -50px;
+            animation: moveCloud1 35s linear infinite;
+        }
+
+        .cloud-2 {
+            width: 220px;
+            height: 65px;
+            top: 300px;
+            right: -80px;
+            animation: moveCloud2 45s linear infinite;
+            opacity: 0.85;
+        }
+
+        .cloud-3 {
+            width: 150px;
+            height: 50px;
+            top: 550px;
+            left: -60px;
+            animation: moveCloud1 50s linear infinite;
+            opacity: 0.75;
+        }
+
+        .cloud-4 {
+            width: 200px;
+            height: 60px;
+            top: 750px;
+            right: -70px;
+            animation: moveCloud2 40s linear infinite;
+            opacity: 0.7;
+        }
+
+        @keyframes moveCloud1 {
+            0% {
+                transform: translateX(0);
+            }
+
+            50% {
+                transform: translateX(150px);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes moveCloud2 {
+            0% {
+                transform: translateX(0);
+            }
+
+            50% {
+                transform: translateX(-150px);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        .main {
+            width: 100%;
+            max-width: 1000px;
+            margin: auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title h1 {
+            margin: 0 0 8px;
+            font-size: 35px;
+        }
+
+        .title p {
+            margin: 0;
+            color: #52758d;
+        }
+
+        .search-area {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        #city {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #9bc6df;
+            border-radius: 10px;
+            outline: none;
+            font-size: 16px;
+            background: white;
+        }
+
+        #city:focus {
+            border-color: #4c91b9;
+        }
+
+        .search-btn {
+            padding: 0 28px;
+            border: 0;
+            border-radius: 10px;
+            background: #6dc858;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .search-btn:hover {
+            background: #1f6389;
+            transform: translateY(-1px);
+        }
+
+        #message {
+            display: none;
+            padding: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-radius: 10px;
+            background: #ffe6e6;
+            color: #a33a3a;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            font-size: 17px;
+        }
+
+        #result {
+            display: none;
+        }
+
+        .current {
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow:
+                0 10px 30px rgba(50, 100, 130, 0.12),
+                0 2px 8px rgba(0, 0, 0, 0.04);
+            margin-bottom: 30px;
+        }
+
+        .city-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .detail {
+            padding: 18px;
+            border-radius: 10px;
+            background: #e9f6fc;
+            border: 1px solid #c5e2ef;
+            transition: 0.2s;
+        }
+
+        .detail:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(50, 100, 130, 0.08);
+        }
+
+        .detail-title {
+            font-size: 14px;
+            color: #55798e;
+            margin-bottom: 8px;
+        }
+
+        .detail-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .section-title {
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .days {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .weather-day {
+            flex: 0 0 calc(25% - 12px);
+            background: rgba(255, 255, 255, 0.97);
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 6px 18px rgba(50, 100, 130, 0.1);
+            border-top: 4px solid #287aa8;
+            transition: 0.2s;
+        }
+
+        .weather-day:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 22px rgba(50, 100, 130, 0.14);
+        }
+
+        .date {
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .condition {
+            min-height: 40px;
+            margin-bottom: 12px;
+            color: #52758d;
+        }
+
+        .temp {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .small-info {
+            font-size: 14px;
+            margin-top: 7px;
+        }
+
+        @media (max-width: 750px) {
+            .details {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .weather-day {
+                flex: 0 0 calc(50% - 8px);
+            }
+        }
+
+        @media (max-width: 500px) {
+            body {
+                padding: 20px 10px;
+            }
+
+            .title h1 {
+                font-size: 28px;
+            }
+
+            .search-area {
+                flex-direction: column;
+            }
+
+            .search-btn {
+                padding: 14px;
+            }
+
+            .details {
+                grid-template-columns: 1fr;
+            }
+
+            .weather-day {
+                flex: 0 0 100%;
+            }
+
+            .current {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="cloud cloud-4"></div>
+
+    <div class="main">
+
+        <div class="title">
+            <h1>🌦️ Hava Məlumatı</h1>
+            <p>Şəhərin hava vəziyyətini öyrənin</p>
+        </div>
+
+        <div class="search-area">
+
+            <input
+                type="text"
+                id="city"
+                list="azerbaijan-cities"
+                placeholder="Məsələn: Bakı"
+            >
+
+            <datalist id="azerbaijan-cities">
+
+                <option value="Bakı">
+                <option value="Gəncə">
+                <option value="Sumqayıt">
+                <option value="Mingəçevir">
+                <option value="Naxçıvan">
+                <option value="Lənkəran">
+                <option value="Şəki">
+                <option value="Şirvan">
+                <option value="Yevlax">
+                <option value="Naftalan">
+
+                <option value="Ağcabədi">
+                <option value="Ağdam">
+                <option value="Ağdaş">
+                <option value="Ağstafa">
+                <option value="Astara">
+                <option value="Balakən">
+                <option value="Bərdə">
+                <option value="Beyləqan">
+                <option value="Biləsuvar">
+                <option value="Cəlilabad">
+                <option value="Daşkəsən">
+                <option value="Füzuli">
+                <option value="Gədəbəy">
+                <option value="Göyçay">
+                <option value="Göygöl">
+                <option value="Hacıqabul">
+                <option value="Xaçmaz">
+                <option value="Xırdalan">
+                <option value="Xızı">
+                <option value="İmişli">
+                <option value="İsmayıllı">
+                <option value="Kürdəmir">
+                <option value="Qəbələ">
+                <option value="Qax">
+                <option value="Qazax">
+                <option value="Qobustan">
+                <option value="Quba">
+                <option value="Qusar">
+                <option value="Laçın">
+                <option value="Lerik">
+                <option value="Masallı">
+                <option value="Neftçala">
+                <option value="Oğuz">
+                <option value="Saatlı">
+                <option value="Sabirabad">
+                <option value="Salyan">
+                <option value="Samux">
+                <option value="Siyəzən">
+                <option value="Şabran">
+                <option value="Şamaxı">
+                <option value="Şəmkir">
+                <option value="Tərtər">
+                <option value="Tovuz">
+                <option value="Ucar">
+                <option value="Yardımlı">
+                <option value="Zaqatala">
+                <option value="Zərdab">
+
+            </datalist>
+
+            <button
+                class="search-btn"
+                onclick="searchWeather()"
+            >
+                Axtar
+            </button>
+
+        </div>
+
+        <div id="message"></div>
+
+        <div id="loading">
+            ⏳ Məlumatlar hazırlanır...
+        </div>
+
+        <div id="result">
+
+            <div class="current">
+
+                <div class="city-name" id="cityName"></div>
+
+                <div class="details">
+
+                    <div class="detail">
+                        <div class="detail-title">
+                            🌡️ Temperatur
+                        </div>
+                        <div class="detail-value" id="tempNow">-</div>
+                    </div>
+
+                    <div class="detail">
+                        <div class="detail-title">
+                            🤒 Hiss olunan
+                        </div>
+                        <div class="detail-value" id="feels">-</div>
+                    </div>
+
+                    <div class="detail">
+                        <div class="detail-title">
+                            💧 Rütubət
+                        </div>
+                        <div class="detail-value" id="humidityNow">-</div>
+                    </div>
+
+                    <div class="detail">
+                        <div class="detail-title">
+                            💨 Külək
+                        </div>
+                        <div class="detail-value" id="windNow">-</div>
+                    </div>
+
+                    <div class="detail">
+                        <div class="detail-title">
+                            🌧️ Yağıntı
+                        </div>
+                        <div class="detail-value" id="rainNow">-</div>
+                    </div>
+
+                    <div class="detail">
+                        <div class="detail-title">
+                            ☁️ Vəziyyət
+                        </div>
+                        <div class="detail-value" id="conditionNow">-</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <h2 class="section-title">
+                📅 7 Günlük hava
+            </h2>
+
+            <div
+                class="days"
+                id="days"
+            ></div>
+
+        </div>
+
+    </div>
+
+<script>
+
+    function getWeatherText(code) {
+
+        const weatherTypes = {
+
+            0: "Açıq hava",
+            1: "Əsasən açıq",
+            2: "Qismən buludlu",
+            3: "Buludlu",
+
+            45: "Duman",
+            48: "Sıx duman",
+
+            51: "Zəif çiskin",
+            53: "Çiskin",
+            55: "Güclü çiskin",
+
+            61: "Zəif yağış",
+            63: "Yağış",
+            65: "Güclü yağış",
+
+            66: "Donmuş yağış",
+            67: "Güclü donmuş yağış",
+
+            71: "Zəif qar",
+            73: "Qar",
+            75: "Güclü qar",
+
+            77: "Qar dənələri",
+
+            80: "Zəif leysan",
+            81: "Leysan",
+            82: "Güclü leysan",
+
+            85: "Zəif qar leysanı",
+            86: "Güclü qar leysanı",
+
+            95: "Tufan",
+            96: "Dolu ilə tufan",
+            99: "Güclü dolu ilə tufan"
+
+        };
+
+        return weatherTypes[code] || "Naməlum";
+    }
+
+    async function searchWeather() {
+
+        const city =
+            document.getElementById("city")
+                .value
+                .trim();
+
+        const message =
+            document.getElementById("message");
+
+        const loading =
+            document.getElementById("loading");
+
+        const result =
+            document.getElementById("result");
+
+        message.style.display = "none";
+
+        if (!city) {
+
+            showMessage(
+                "Şəhərin adını daxil edin."
+            );
+
+            return;
+        }
+
+        loading.style.display = "block";
+        result.style.display = "none";
+
+        try {
+
+            const geoRequest =
+                "https://geocoding-api.open-meteo.com/v1/search?" +
+
+                new URLSearchParams({
+
+                    name: city,
+                    count: 1,
+                    language: "az",
+                    format: "json"
+
+                });
+
+            const geoResponse =
+                await fetch(geoRequest);
+
+            if (!geoResponse.ok) {
+
+                throw new Error(
+                    "Şəhər məlumatı alınmadı."
+                );
+
+            }
+
+            const geoResult =
+                await geoResponse.json();
+
+            if (
+                !geoResult.results ||
+                geoResult.results.length === 0
+            ) {
+
+                showMessage(
+                    "Bu adda şəhər tapılmadı."
+                );
+
+                return;
+            }
+
+            const place =
+                geoResult.results[0];
+
+            const lat =
+                place.latitude;
+
+            const lon =
+                place.longitude;
+
+            const weatherRequest =
+                "https://api.open-meteo.com/v1/forecast?" +
+
+                new URLSearchParams({
+
+                    latitude: lat,
+                    longitude: lon,
+
+                    current:
+                        "temperature_2m," +
+                        "relative_humidity_2m," +
+                        "apparent_temperature," +
+                        "precipitation," +
+                        "weather_code," +
+                        "wind_speed_10m",
+
+                    daily:
+                        "weather_code," +
+                        "temperature_2m_max," +
+                        "temperature_2m_min," +
+                        "precipitation_probability_max," +
+                        "wind_speed_10m_max",
+
+                    forecast_days: 7,
+                    timezone: "auto"
+
+                });
+
+            const weatherResponse =
+                await fetch(weatherRequest);
+
+            if (!weatherResponse.ok) {
+
+                throw new Error(
+                    "Hava məlumatı alınmadı."
+                );
+
+            }
+
+            const weatherData =
+                await weatherResponse.json();
+
+            displayCurrentWeather(
+                place,
+                weatherData.current
+            );
+
+            displayForecast(
+                weatherData.daily
+            );
+
+            result.style.display = "block";
+
+        } catch (error) {
+
+            console.log(error);
+
+            showMessage(
+                "Məlumat alınarkən problem yarandı. " +
+                "İnternet bağlantınızı yoxlayın."
+            );
+
+        } finally {
+
+            loading.style.display = "none";
+
+        }
+
+    }
+
+    function displayCurrentWeather(
+        place,
+        current
+    ) {
+
+        document.getElementById("cityName")
+            .textContent =
+            place.name +
+            ", " +
+            (place.country || "");
+
+        document.getElementById("tempNow")
+            .textContent =
+            current.temperature_2m +
+            " °C";
+
+        document.getElementById("feels")
+            .textContent =
+            current.apparent_temperature +
+            " °C";
+
+        document.getElementById("humidityNow")
+            .textContent =
+            current.relative_humidity_2m +
+            " %";
+
+        document.getElementById("windNow")
+            .textContent =
+            current.wind_speed_10m +
+            " km/saat";
+
+        document.getElementById("rainNow")
+            .textContent =
+            current.precipitation +
+            " mm";
+
+        document.getElementById("conditionNow")
+            .textContent =
+            getWeatherText(
+                current.weather_code
+            );
+
+    }
+
+    function displayForecast(data) {
+
+        const container =
+            document.getElementById("days");
+
+        container.innerHTML = "";
+
+        for (
+            let i = 0;
+            i < data.time.length;
+            i++
+        ) {
+
+            const date =
+                new Date(data.time[i]);
+
+            const dateText =
+                date.toLocaleDateString(
+                    "az-AZ",
+                    {
+                        day: "2-digit",
+                        month: "2-digit"
+                    }
+                );
+
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "weather-day";
+
+            card.innerHTML = `
+
+                <div class="date">
+                    📅 ${dateText}
+                </div>
+
+                <div class="condition">
+                    ${getWeatherText(
+                        data.weather_code[i]
+                    )}
+                </div>
+
+                <div class="temp">
+
+                    🌡️
+                    ${data.temperature_2m_min[i]}°C -
+                    ${data.temperature_2m_max[i]}°C
+
+                </div>
+
+                <div class="small-info">
+
+                    🌧️ Yağış:
+                    ${data.precipitation_probability_max[i]}%
+
+                </div>
+
+                <div class="small-info">
+
+                    💨 Külək:
+                    ${data.wind_speed_10m_max[i]} km/s
+
+                </div>
+
+            `;
+
+            container.appendChild(card);
+
+        }
+
+    }
+
+    function showMessage(text) {
+
+        const message =
+            document.getElementById("message");
+
+        message.textContent =
+            text;
+
+        message.style.display =
+            "block";
+
+        document.getElementById("loading")
+            .style.display =
+            "none";
+
+    }
+
+    document.getElementById("city")
+        .addEventListener(
+            "keydown",
+            function(event) {
+
+                if (event.key === "Enter") {
+
+                    searchWeather();
+
+                }
+
+            }
+        );
+
+</script>
+
+</body>
+</html>
